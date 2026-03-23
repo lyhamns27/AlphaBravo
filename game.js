@@ -48,10 +48,28 @@ function drawGrid() {
 
 // Dessine l'unité
 function drawUnit() {
-    let x = unit.col * hexSize * 1.7 + 60;
-    let y = unit.row * hexSize * 1.5 + 60;
 
-    if (unit.col % 2 === 1) {
+    let now = Date.now();
+
+    let progress = 1;
+
+    if (unit.arrivalTime) {
+        progress = (now - unit.startTime) / (unit.arrivalTime - unit.startTime);
+        progress = Math.min(progress, 1);
+    }
+
+    let currentCol = unit.startPos 
+        ? unit.startPos.col + (unit.targetPos.col - unit.startPos.col) * progress
+        : unit.col;
+
+    let currentRow = unit.startPos 
+        ? unit.startPos.row + (unit.targetPos.row - unit.startPos.row) * progress
+        : unit.row;
+
+    let x = currentCol * hexSize * 1.7 + 60;
+    let y = currentRow * hexSize * 1.5 + 60;
+
+    if (Math.floor(currentCol) % 2 === 1) {
         y += hexSize * 0.75;
     }
 
@@ -69,28 +87,22 @@ function draw() {
 }
 
 // Gestion du clic
-canvas.addEventListener("click", function(event) {
+let distance = getDistance(unit, {col, row});
 
-    const rect = canvas.getBoundingClientRect();
-    const mouseX = event.clientX - rect.left;
-    const mouseY = event.clientY - rect.top;
+// 3 hex = 1h30 → 1 hex = 30 min
+let timePerHex = 30 * 60 * 1000;
 
-    let col = Math.floor((mouseX - 60) / (hexSize * 1.7));
-    let row;
+let travelTime = distance * timePerHex;
 
-    if (col % 2 === 1) {
-        row = Math.floor((mouseY - 60 - hexSize * 0.75) / (hexSize * 1.5));
-    } else {
-        row = Math.floor((mouseY - 60) / (hexSize * 1.5));
-    }
-
-    // Vérifie que le clic est dans la grille
-    if (col >= 0 && col < cols && row >= 0 && row < rows) {
-        unit.col = col;
-        unit.row = row;
-        draw();
-    }
-});
+unit.startTime = Date.now();
+unit.arrivalTime = Date.now() + travelTime;
+unit.startPos = { col: unit.col, row: unit.row };
+unit.targetPos = { col, row };
 
 // Lancer le jeu
-draw();
+function gameLoop() {
+    draw();
+    requestAnimationFrame(gameLoop);
+}
+
+gameLoop();
